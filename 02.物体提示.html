@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>My first three.js app</title>
+	<style>
+		body {
+			margin: 0;
+		}
+		#tooltip {
+			position: absolute;
+			background-color: white;
+			padding: 10px;
+			border: 1px solid black;
+			display: none;
+		}
+	</style>
+
+
+</head>
+
+<body>
+	<div id="tooltip">This is a cube.</div>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
+	<script type="module">
+		import * as THREE from '../build/three.module.js';
+		import { OrbitControls } from '../jsm/controls/OrbitControls.js';
+		import { DragControls } from '../jsm/controls/DragControls.js';
+		//生成场景
+		const scene = new THREE.Scene();
+		//设置相机
+		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);//场景范围 75度角度越大 东西越小 视野范围 0.1-1000（远近）
+		camera.position.z = 5;//相机位置 position.x\y\z lookAt(0,0,0)（相机看向的位置）
+		//设置渲染器
+		const renderer = new THREE.WebGLRenderer();//渲染器
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.domElement);
+		//生成模型
+		const geometry = new THREE.BoxGeometry(1, 1, 1);//
+		const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+		const cube = new THREE.Mesh(geometry, material);
+		//设置场景
+		scene.add(cube);
+		const oribtControls = new OrbitControls(camera, renderer.domElement);//漫游
+		oribtControls.enableZoom = false;
+		oribtControls.update();
+		//键盘控制相机移动
+		const dragControls = new DragControls([cube], camera, renderer.domElement);
+		dragControls.addEventListener('drag', function () {
+			renderer.render(scene, camera);
+		});
+
+		function animate() {
+			renderer.render(scene, camera);//渲染
+			requestAnimationFrame(animate);
+			oribtControls.update();
+		}
+		//开始动画
+		animate();
+		const raycaster = new THREE.Raycaster();
+		const mouse = new THREE.Vector2();
+
+		// 鼠标点击事件
+		window.addEventListener('click', function (event) {
+			// 将鼠标位置归一化为设备坐标。x 和 y 方向的取值范围都是 (-1 to +1)
+			mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+			mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+			// 通过摄像机和鼠标位置更新射线
+			raycaster.setFromCamera(mouse, camera);
+
+			// 计算物体和射线的焦点
+			const intersects = raycaster.intersectObjects(scene.children);
+
+			if (intersects.length > 0) {
+				document.getElementById('tooltip').style.display = 'block';
+				document.getElementById('tooltip').style.left = event.clientX + 'px';
+				document.getElementById('tooltip').style.top = event.clientY + 'px';
+			} else {
+				document.getElementById('tooltip').style.display = 'none';
+			}
+		});
+	</script>
+</body>
+
+</html>

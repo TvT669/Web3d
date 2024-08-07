@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>My first three.js app</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../build/three.module.js",
+                "three/addons/": "./jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from '../build/three.module.js';
+        import { OrbitControls } from '../jsm/controls/OrbitControls.js';
+        import { DragControls } from '../jsm/controls/DragControls.js';
+        import { GLTFLoader } from '../jsm/loaders/GLTFLoader.js';
+        import { RGBELoader } from '../jsm/loaders/RGBELoader.js';
+
+        //生成场景
+        const scene = new THREE.Scene();
+        //设置相机
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+        camera.position.y = 1.6;
+        camera.position.x = 0;
+        camera.lookAt(0, 0, 0);
+
+        //坐标轴
+        const axesHelper = new THREE.AxesHelper(8);
+        scene.add(axesHelper);
+
+        //设置渲染器
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        //创建轨道控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+
+        // 加载天空盒纹理
+        const loader = new THREE.CubeTextureLoader();
+        const texture = loader.load([
+            '../jsm/textures/右.jpg', // right
+            '../jsm/textures/左.jpg', // left
+            '../jsm/textures/上.jpg', // top
+            '../jsm/textures/下.jpg', // bottom
+            '../jsm/textures/前.jpg', // front
+            '../jsm/textures/后.jpg'  // back
+        ]);
+        scene.background = texture;
+
+        // 创建地板
+        const floorGeometry = new THREE.PlaneGeometry(10, 10);
+        const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x555555, side: THREE.DoubleSide });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = - Math.PI / 2;
+        scene.add(floor);
+
+        //实例化加载器gltf
+        const gltfLoader = new GLTFLoader();
+        gltfLoader.load("../jsm/models/csfa1708091.glb", (gltf) => {
+            // 旋转模型
+            gltf.scene.rotation.x = -Math.PI / 2;
+
+            // 更新模型的世界矩阵
+            gltf.scene.updateMatrixWorld(true);
+
+            let sofaMesh = gltf.scene.getObjectByName('defaultMaterial');
+            if (sofaMesh) {
+                // 计算包围盒
+                let sofaBox = new THREE.Box3().setFromObject(sofaMesh);
+                // 获取包围盒的最低点
+                let minY = sofaBox.min.y;
+                // 将沙发模型的底部对齐到地面
+                gltf.scene.position.y -= minY;
+                // 更新模型的世界矩阵
+                gltf.scene.updateMatrixWorld(true);
+
+                // 创建包围盒辅助器
+                let sofaBoxHelper = new THREE.Box3Helper(sofaBox, 0xffff00);
+                // 添加包围盒辅助器到场景
+                scene.add(sofaBoxHelper);
+            }
+
+            // 将模型添加到场景
+            scene.add(gltf.scene);
+
+            // 创建拖动控制器
+            const dragControls = new DragControls([gltf.scene], camera, renderer.domElement);
+            // 禁用轨道控制器当拖动开始
+            dragControls.addEventListener('dragstart', function () {
+                controls.enabled = false;
+            });
+            // 启用轨道控制器当拖动结束
+            dragControls.addEventListener('dragend', function () {
+                controls.enabled = true;
+            });
+        });
+
+        const light = new THREE.AmbientLight(0xffffff);
+        scene.add(light);
+
+        //设置场景
+        function animate() {
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+            controls.update();
+        }
+
+        //开始动画
+        animate();
+        window.addEventListener("resize", () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+
+</html>
+

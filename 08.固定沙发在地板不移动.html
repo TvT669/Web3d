@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>My first three.js app</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../build/three.module.js",
+                "three/addons/": "./jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from '../build/three.module.js';
+        import { OrbitControls } from '../jsm/controls/OrbitControls.js';
+        import { RGBELoader } from '../jsm/loaders/RGBELoader.js';
+        import { GLTFLoader } from '../jsm/loaders/GLTFLoader.js';
+        import { DragControls } from '../jsm/controls/DragControls.js';
+
+        //生成场景
+        const scene = new THREE.Scene();
+        //设置相机
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);//场景范围 75度角度越大 东西越小 视野范围 0.1-1000（远近）
+        camera.position.z = 5;//相机位置 position.x\y\z lookAt(0,0,0)（相机看向的位置）
+        camera.position.y = 1.6;
+        camera.position.x = 0;
+        camera.lookAt(0, 0, 0);
+        //坐标轴
+        const axesHelper = new THREE.AxesHelper(8);
+        scene.add(axesHelper);
+        //设置渲染器
+        const renderer = new THREE.WebGLRenderer();//渲染器
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        //创建轨道控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        //环境贴图
+        let rgbeLoader = new RGBELoader();
+        rgbeLoader.load("../jsm/textures/7.hdr", (envMap) => {
+            scene.background = envMap;//设置背景贴图
+            envMap.mapping = THREE.EquirectangularReflectionMapping;//设置贴图映射
+            planeMaterial.envMap = envMap;//设置plane的环境贴图
+        });
+        // 创建地板
+        const floorGeometry = new THREE.PlaneGeometry(10, 10);
+        const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x555555, side: THREE.DoubleSide });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = - Math.PI / 2;
+        scene.add(floor);
+        const wallGeometry = new THREE.PlaneGeometry(10, 10);
+    const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x888888, side: THREE.DoubleSide });
+
+    // 创建并添加四面墙
+    const wallPositions = [
+        { x: 0, y: 5, z: 5, rotation: { x: 0, y: Math.PI, z: 0 } }, // 前墙
+        { x: 0, y: 5, z: -5, rotation: { x: 0, y: 0, z: 0 } }, // 后墙
+        { x: 5, y: 5, z: 0, rotation: { x: 0, y: Math.PI / 2, z: 0 } }, // 右墙
+        { x: -5, y: 5, z: 0, rotation: { x: 0, y: -Math.PI / 2, z: 0 } } // 左墙
+    ];
+
+    wallPositions.forEach((wallPosition) => {
+        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+        wall.position.set(wallPosition.x, wallPosition.y, wallPosition.z);
+        wall.rotation.set(wallPosition.rotation.x, wallPosition.rotation.y, wallPosition.rotation.z);
+        scene.add(wall);
+    });
+
+        //实例化加载器gltf
+        const gltfLoader = new GLTFLoader();
+        gltfLoader.load("../jsm/models/csfa1708091.glb", (gltf) => {
+            // 先添加模型到场景
+            scene.add(gltf.scene);
+            // 旋转模型
+            gltf.scene.rotation.x = -Math.PI / 2;
+            // 设置模型的y轴位置为地板的高度
+            gltf.scene.position.z = 0;
+            console.log(gltf);
+
+            // 更新模型的世界矩阵
+            gltf.scene.updateMatrixWorld(true);
+
+            let sofaMesh = gltf.scene.getObjectByName('defaultMaterial');
+            if (sofaMesh) {
+                // 计算包围盒
+                let sofaBox = new THREE.Box3().setFromObject(sofaMesh);
+                console.log(sofaBox);
+                // 创建包围盒辅助器
+                let sofaBoxHelper = new THREE.Box3Helper(sofaBox, 0xffff00);
+                // 添加包围盒辅助器到场景
+                scene.add(sofaBoxHelper);
+            }
+            // 创建拖动控制器
+          
+        });
+
+        const light = new THREE.AmbientLight(0xffffff);
+        scene.add(light);
+
+        //设置场景
+        function animate() {
+            renderer.render(scene, camera);//渲染
+            requestAnimationFrame(animate);
+            controls.update();
+        }
+        //开始动画
+        animate();
+        window.addEventListener("resize", () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+    </script>
+</body>
+
+</html>

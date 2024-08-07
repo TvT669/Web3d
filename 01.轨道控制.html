@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>My first three.js app</title>
+	<style>
+		body {
+			margin: 0;
+		}
+	</style>
+
+</head>
+
+<body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
+	<script type="module">
+		import * as THREE from '../build/three.module.js';
+		import { OrbitControls } from '../jsm/controls/OrbitControls.js';
+		//生成场景
+		const scene = new THREE.Scene();
+		//设置相机
+		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);//场景范围 75度角度越大 东西越小 视野范围 0.1-1000（远近）
+		camera.position.z = 5;//相机位置 position.x\y\z lookAt(0,0,0)（相机看向的位置）
+		//设置渲染器
+		const renderer = new THREE.WebGLRenderer();//渲染器
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.domElement);
+		//生成模型
+		const geometry = new THREE.BoxGeometry(1, 1, 1);//
+		const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+		const cube = new THREE.Mesh(geometry, material);
+		//设置场景
+		scene.add(cube);
+		const controls= new OrbitControls(camera, renderer.domElement);//漫游
+		 controls.update();
+		//键盘控制相机移动
+		function animate() {
+			renderer.render(scene, camera);//渲染
+			requestAnimationFrame(animate);
+			controls.update();
+		}
+		//开始动画
+		animate();
+	</script>
+</body>
+
+</html>

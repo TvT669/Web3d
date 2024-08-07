@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>My first three.js app</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+
+
+</head>
+
+<body>
+    <script type="importmap">
+		{
+			"imports": {
+				"three": "../build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
+    <script type="module">
+        import * as THREE from '../build/three.module.js';
+        import { OrbitControls } from '../jsm/controls/OrbitControls.js';
+        import { DragControls } from '../jsm/controls/DragControls.js';
+        import { RGBELoader } from '../jsm/loaders/RGBELoader.js';
+        
+        //生成场景
+        const scene = new THREE.Scene();
+        //设置相机
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);//场景范围 75度角度越大 东西越小 视野范围 0.1-1000（远近）
+        camera.position.z = 5;//相机位置 position.x\y\z lookAt(0,0,0)（相机看向的位置）
+        camera.position.y = 2;
+        camera.position.x = 2;
+        //坐标轴
+        const axesHelper = new THREE.AxesHelper(6);
+        scene.add(axesHelper);
+        //设置渲染器
+        const renderer = new THREE.WebGLRenderer();//渲染器
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        //创建轨道控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        //生成平面
+        let planeGeometry = new THREE.PlaneGeometry(1,1);
+        let planeMaterial = new THREE.MeshBasicMaterial({color:0xffffff});//透明度、ao贴图、透明度贴图、光照贴图、高光贴图
+        let plane = new THREE.Mesh(planeGeometry,planeMaterial);
+        scene.add(plane);
+        //环境贴图
+        let rgbeLoader = new RGBELoader();
+        rgbeLoader.load("../jsm/textures/7.hdr",(envMap)=>{
+            scene.background = envMap;//设置背景贴图
+            envMap.mapping = THREE.EquirectangularReflectionMapping;//设置贴图映射
+            planeMaterial.envMap = envMap;//设置plane的环境贴图
+
+        });
+        //设置场景
+        function animate() {
+            renderer.render(scene, camera);//渲染
+            requestAnimationFrame(animate);
+            controls.update();
+        }
+        //开始动画
+        animate();
+        window.addEventListener("resize",()=>{
+            renderer.setSize(window.innerWidth,window.innerHeight);
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+       
+    </script>
+</body>
+
+</html>
