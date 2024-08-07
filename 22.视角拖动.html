@@ -74,9 +74,11 @@
         import { PointerLockControls } from '../jsm/controls/PointerLockControls.js';
         import { RGBELoader } from '../jsm/loaders/RGBELoader.js';
         import { GLTFLoader } from '../jsm/loaders/GLTFLoader.js';
+        import {OrbitControls} from '../jsm/controls/OrbitControls.js';
 
-        let camera, scene, renderer, controls, model, raycaster, mouse, selectedObject;
+        let camera, scene, renderer, controls, controls2, model, raycaster, mouse, selectedObject;
         const objects = [];
+        let isDragging = false;
 
         init();
         animate();
@@ -170,9 +172,19 @@
             });
 
             // 创建轨道控制器
+            controls2 = new OrbitControls(camera, renderer.domElement);
+            controls2.enableDamping = true;
+            controls2.dampingFactor = 0.05;
+            controls2.screenSpacePanning = false;
+            controls2.minDistance = 1;
+            controls2.maxDistance = 100;
+            controls2.maxPolarAngle = Math.PI / 2;
+
+            // 创建第一人称控制器
             controls = new PointerLockControls(camera, document.body);
             scene.add(controls.getObject());
 
+            // 锁定指针控制器
             document.addEventListener('click', function () {
                 if (!document.pointerLockElement) {
                     controls.lock();
@@ -187,6 +199,10 @@
             window.addEventListener('mousemove', onMouseMove, false);
             window.addEventListener('resize', onWindowResize, false);
 
+            // 切换控制器
+            window.addEventListener('mousedown', onMouseDown, false);
+            window.addEventListener('mouseup', onMouseUp, false);
+
             // 添加材质选择事件监听
             const materialIcons = document.querySelectorAll('.material-icon');
             materialIcons.forEach(icon => {
@@ -198,46 +214,60 @@
             });
         }
 
+        function onMouseDown(event) {
+            isDragging = true;
+            controls2.enabled = true;
+            controls.unlock();
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+            controls2.enabled = false;
+            controls.lock();
+        }
+
         function onClick(event) {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
+            if (!isDragging) {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
 
-            const intersects = raycaster.intersectObjects(objects, true);
-            if (intersects.length > 0) {
-                const object = intersects[0].object;
+                const intersects = raycaster.intersectObjects(objects, true);
+                if (intersects.length > 0) {
+                    const object = intersects[0].object;
 
-                if (object.name === 'floor') {
-                    // 点击地面上的目标点来移动相机位置
-                    controls.getObject().position.set(intersects[0].point.x, 1.6, intersects[0].point.z);
+                    if (object.name === 'floor') {
+                        // 点击地面上的目标点来移动相机位置
+                        controls.getObject().position.set(intersects[0].point.x, 1.6, intersects[0].point.z);
+                    } else {
+                        // 获取物体的颜色
+                        const color = object.material.color;
+
+                        // 获取物体的大小
+                        const box = new THREE.Box3().setFromObject(object);
+                        const size = new THREE.Vector3();
+                        box.getSize(size);
+
+                        // 更新标签内容
+                        const infoContent = `
+                            <h5><strong>沙发</strong><h5>
+                            <span>Color: RGB(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})</span><br>
+                            <span>Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)} cm</span>
+                        `;
+                        const info = document.getElementById('info');
+                        info.innerHTML = infoContent;
+                        info.style.display = 'block';
+                        document.getElementById('material-selector').style.display = 'flex';
+
+                        // 设置当前选中的物体
+                        selectedObject = object;
+                    }
                 } else {
-                    // 获取物体的颜色
-                    const color = object.material.color;
-
-                    // 获取物体的大小
-                    const box = new THREE.Box3().setFromObject(object);
-                    const size = new THREE.Vector3();
-                    box.getSize(size);
-
-                    // 更新标签内容
-                    const infoContent = `
-                        <h5><strong>沙发</strong><h5>
-                        <span>Color: RGB(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})</span><br>
-                        <span>Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)} cm</span>
-                    `;
                     const info = document.getElementById('info');
-                    info.innerHTML = infoContent;
-                    info.style.display = 'block';
-                    document.getElementById('material-selector').style.display = 'flex';
-
-                    // 设置当前选中的物体
-                    selectedObject = object;
+                    info.style.display = 'none';
+                    document.getElementById('material-selector').style.display = 'none';
+                    selectedObject = null;
                 }
-            } else {
-                const info = document.getElementById('info');
-                info.style.display = 'none';
-                document.getElementById('material-selector').style.display = 'none';
-                selectedObject = null;
             }
         }
 
@@ -254,6 +284,9 @@
 
         function animate() {
             requestAnimationFrame(animate);
+            if (controls2.enabled) {
+                controls2.update();
+            }
             renderer.render(scene, camera);
         }
 
@@ -325,6 +358,9 @@
 </body>
 
 </html>
+
+</html>
+
 
 
 
