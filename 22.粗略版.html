@@ -70,11 +70,15 @@
     </script>
     <script type="module">
         import * as THREE from '../build/three.module.js';
-        import { PointerLockControls } from '../jsm/controls/PointerLockControls.js';
+        import { PointerLockControls } from '../jsm/controls/PointerLockControls2.js';
         import { RGBELoader } from '../jsm/loaders/RGBELoader.js';
         import { GLTFLoader } from '../jsm/loaders/GLTFLoader.js';
 
         let camera, scene, renderer, controls, model, raycaster, mouse, selectedObject;
+        let isUserInteracting = false;
+        let onPointerDownPointerX = 0, onPointerDownPointerY = 0;
+        let onPointerDownLon = 0, onPointerDownLat = 0;
+        let lon = 0, lat = 0;
         const objects = [];
 
         init();
@@ -87,7 +91,6 @@
             // 创建相机
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 1.6, 3);
-
 
             // 创建渲染器
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -169,10 +172,9 @@
                 scene.add(model);
             });
 
-            // 创建轨道控制器
+            // 创建PointerLockControls
             controls = new PointerLockControls(camera, document.body);
             scene.add(controls.getObject());
-            // 锁定指针控制器
             document.addEventListener('click', function () {
                 if (!document.pointerLockElement) {
                     controls.lock();
@@ -182,25 +184,12 @@
             // 创建光标提示
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
-            document.addEventListener('click', function () {
-                if (!document.pointerLockElement) {
-                    controls.lock();
-                }
-            });
-
-            controls.addEventListener('lock', function () {
-                console.log('Pointer locked');
-            });
-
-            controls.addEventListener('unlock', function () {
-                console.log('Pointer unlocked');
-            });
-
 
             window.addEventListener('click', onClick, false);
+            window.addEventListener('mousedown', onMouseDown, false);
             window.addEventListener('mousemove', onMouseMove, false);
+            window.addEventListener('mouseup', onMouseUp, false);
             window.addEventListener('resize', onWindowResize, false);
-
 
             // 添加材质选择事件监听
             const materialIcons = document.querySelectorAll('.material-icon');
@@ -213,57 +202,6 @@
             });
         }
 
-        var onKeyDown = function (event) {
-            console.log("Key down:", event.keyCode);
-            switch (event.keyCode) {
-                case 38: // up
-                case 87: // w
-                    object.moveForward = true;
-                    break;
-                case 37: // left
-                case 65: // a
-                    object.moveLeft = true;
-                    break;
-                case 40: // down
-                case 83: // s
-                    object.moveBackward = true;
-                    break;
-                case 39: // right
-                case 68: // d
-                    object.moveRight = true;
-                    break;
-                case 32: // space
-                    if (object.canJump === true) object.velocity.y += 350;
-                    object.canJump = false;
-                    break;
-            }
-        };
-        // 设置键盘抬起监听事件
-        var onKeyUp = function (event) {
-            console.log("Key up:", event.keyCode);
-            switch (event.keyCode) {
-                case 38: // up
-                case 87: // w
-                    object.moveForward = false;
-                    break;
-                case 37: // left
-                case 65: // a
-                    object.moveLeft = false;
-                    break;
-                case 40: // down
-                case 83: // s
-                    object.moveBackward = false;
-                    break;
-                case 39: // right
-                case 68: // d
-                    object.moveRight = false;
-                    break;
-            }
-        };
-        document.addEventListener('keydown', onKeyDown, false);
-        document.addEventListener('keyup', onKeyUp, false);
-
-
         function onClick(event) {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -274,20 +212,15 @@
                 const object = intersects[0].object;
 
                 if (object.name === 'floor') {
-                    // 点击地面上的目标点来移动相机位置
                     controls.getObject().position.set(intersects[0].point.x, 1.6, intersects[0].point.z);
                 } else {
-                    // 获取物体的颜色
                     const color = object.material.color;
-
-                    // 获取物体的大小
                     const box = new THREE.Box3().setFromObject(object);
                     const size = new THREE.Vector3();
                     box.getSize(size);
 
-                    // 更新标签内容
                     const infoContent = `
-                        <h5><strong>沙发</strong><h5>
+                        <h5><strong>沙发</strong></h5>
                         <span>Color: RGB(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})</span><br>
                         <span>Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)} cm</span>
                     `;
@@ -296,7 +229,6 @@
                     info.style.display = 'block';
                     document.getElementById('material-selector').style.display = 'flex';
 
-                    // 设置当前选中的物体
                     selectedObject = object;
                 }
             } else {
@@ -306,23 +238,47 @@
                 selectedObject = null;
             }
         }
-        // 鼠标移动事件
-        function onMouseMove(event) {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        function onMouseDown(event) {
+            isUserInteracting = true;
+            onPointerDownPointerX = event.clientX;
+            onPointerDownPointerY = event.clientY;
+            onPointerDownLon = lon;
+            onPointerDownLat = lat;
         }
-        // 窗口大小改变事件
+
+        function onMouseMove(event) {
+            if (isUserInteracting) {
+                lon = (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
+                lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
+
+                lat = Math.max(-85, Math.min(85, lat));
+                const phi = THREE.MathUtils.degToRad(90 - lat);
+                const theta = THREE.MathUtils.degToRad(lon);
+
+                const x = 500 * Math.sin(phi) * Math.cos(theta);
+                const y = 500 * Math.cos(phi);
+                const z = 500 * Math.sin(phi) * Math.sin(theta);
+
+                camera.lookAt(x, y, z);
+            }
+        }
+
+        function onMouseUp() {
+            isUserInteracting = false;
+        }
+
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
-        // 动画函数
+
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
-        // 更换材质
+
         function changeMaterial(materialName) {
             if (selectedObject) {
                 const newMaterial = createMaterial(materialName);
@@ -330,7 +286,7 @@
                 updateInfo(newMaterial, materialName);
             }
         }
-        // 创建材质
+
         function createMaterial(materialName) {
             switch (materialName) {
                 case 'material1':
@@ -379,7 +335,7 @@
             const size = new THREE.Vector3();
             box.getSize(size);
             const infoContent = `
-                <h5><strong>沙发</strong><h5>
+                <h5><strong>沙发</strong></h5>
                 <span>Color: RGB(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})</span><br>
                 <span>Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)} cm</span><br>
                 <span>Material: ${materialName}</span>
@@ -391,3 +347,8 @@
 </body>
 
 </html>
+
+
+
+
+
